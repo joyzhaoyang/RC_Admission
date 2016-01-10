@@ -7,8 +7,8 @@ Description:
 2. Implement Depth First Search
 
 Notes:
-1. BinaryTree class: Included a function "serialize" to visualize the tree (by depth)
-2. BinaryTree class: Included a function "deserialize" to (easily) construct the tree (by depth)
+1. BinaryTree class: Included a function "serialize" to visualize the tree (by depth and by breadth-using queue)
+2. BinaryTree class: Included a function "deserialize" to (easily) construct the tree (by depth and by breadth-using queue)
 3. Assume lower case is different from upper case - case sensitive
    (case insensitive code included in the comments)
 
@@ -23,22 +23,27 @@ Known bugs:
 
 To be improved:
 1. More checks on node value to be a single string, or change it to char
---- change the value of the node from string to char on 01/08/16
---- improve the testing cases in the main function on 01/08/16
+--- changed the value of the node from string to char on 01/08/16
+--- improved the testing cases in the main function on 01/08/16
 
 2. Other methods for "serialize" and "deserialize", e.g. by breadth
+--- added "serialize" and "deserialize" (by breadth) functions using queue on 01/09/16
+
 3. Other methods for Depth first search 
 4. Breadth first search
 5. Binary Tree -> General Tree (i.e. number of child nodes can be more than two)
 
 Start on:      12/30/15
-Last Modified: 01/08/16
+version 1:     01/08/16
+version 2:     01/09/16
+Last Modified: 01/09/16
 */
 
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <assert.h>
+#include <queue> 
 
 
 using namespace std;
@@ -95,16 +100,76 @@ public:
 //********** other functions **********
 
 //***** Encodes a tree to a single string.
+	// Method 1: by recursion
     string serialize() {
         ostringstream oss;;
 		serialize(root,oss);
 		return oss.str();
     }
 
+	// Method 2; using queue
+	string serializeByQueue(){
+		queue<Node*> q;
+		string output;
+		
+		q.push(root);
+
+		while (!q.empty()){
+			if (q.front()==nullptr) {
+				output = output + "$ ";
+			}else {
+				q.push(q.front()->lChild); // insert at the back
+				q.push(q.front()->rChild);
+				output = output + q.front()->val + " ";
+			} // end of if
+			q.pop();
+		} // end of while
+		return output;
+	}
+
 //***** Decodes your encoded data to tree.
+	// Method 1: by recursion
     void deserialize(string data) {
         istringstream iss(data);
         root = deserialize(iss);
+    }
+
+	// Method 2; using queue
+	void deserializeByQueue(string data) {
+        root = nullptr;
+        queue <Node**> q; // store the address of all the nodes
+        // so that when the node is poped from the queue, we can still reference to the nodes
+        
+        q.push(&root); // address of the root node
+        
+        string::iterator curr = data.begin();
+        string::iterator last;
+        string s_val;
+		char   c_val; // initialize a value for debugging 
+		int ii = 1; // loop control, for debugging
+
+        while(curr != data.end()){
+            Node ** addr = q.front();
+            
+            if(*curr == '$'){ // null node
+                advance(curr,2); // move to next char
+                // 2 because we need to consider the empty space between the chars
+                // because all the nodes are initialized with NULL, no need to change its value
+            } else {
+                last = find(curr,data.end(),' '); // find the next empty space 
+				s_val = string(curr,last); 
+				c_val = s_val[0]; // convert the string to char
+                *addr = new Node(c_val);
+                q.push(&((*addr)->lChild)); // push the left child of the current node to the queue
+                // null value at the moment, the value will be assigned in the next while loop
+                q.push(&((*addr)->rChild));// same for the right child
+
+                curr = next(last); // move to the next char
+            } // end of if
+            q.pop(); // remove the current front node (address)
+			ii++;
+        } // end of while
+        
     }
 
 //***** Depth first search: by recursion
@@ -178,23 +243,35 @@ void main() {
 	Node * nodea = new Node('a',nodeb,nodec);
 	BinaryTree * bTree1 = new BinaryTree(nodea);
 
-	string str1 = "a b d $ $ f $ $ c g h $ $ $ $";
+	string str1      = "a b d $ $ f $ $ c g h $ $ $ $ ";
 	BinaryTree * bTree1copy = new BinaryTree();
 	bTree1copy -> deserialize(str1);
 
-	cout << "Print binary tree 1     :" << bTree1->serialize() << endl;
-	cout << "Print binary tree 1 copy:" << bTree1copy->serialize() << endl;
+//	string str1queue = "a,b,c,d,f,g,$,$,$,$,$,h,$,$,$ ";
+	string str1queue = "a b c d f g $ $ $ $ $ h $ $ $ ";
+	BinaryTree * bTree1queuecopy = new BinaryTree();
+	bTree1queuecopy -> deserializeByQueue(str1queue);
+
+	cout << "Print binary tree 1           :   " << bTree1->serialize() << endl;
+	cout << "Print binary tree 1 copy      :   " << bTree1copy->serialize() << endl;
+	cout << "Print binary tree 1 queue     :   " << bTree1->serializeByQueue() << endl;
+	cout << "Print binary tree 1 queue copy:   " << bTree1queuecopy->serializeByQueue() << endl << endl;
+	
 	cout << "Enter a char to search: " << endl;
 	char input;
 	cin >> input;
-	cout << "The result of depth search in tree 1: " << bTree1->dfSearch(input) << endl;
+	cout << "The result of depth search in tree 1:   " << bTree1->dfSearch(input) << endl << endl;
+
 
 	// Test case 2: empty tree
+
 //	string str2 = "$";
 	BinaryTree * bTree2 = new BinaryTree();
 //	bTree2 -> deserialize(str2);
-	cout << "Print binary tree 2:" << bTree2->serialize() << endl;
-	cout << "The result of depth search in tree 2: " << bTree2->dfSearch(input) << endl;
+	cout << "Print binary tree 2      :   " << bTree2->serialize() << endl;
+	cout << "Print binary tree 2 queue:   " << bTree2->serializeByQueue() << endl << endl;
+	cout << "The result of depth search in tree 2:   " << bTree2->dfSearch(input) << endl << endl;
+
 
 	// Test case 3: tree include every letter
 	Node * node3u = new Node('u'); // 5.1
@@ -230,21 +307,28 @@ void main() {
 
 	BinaryTree * bTree3 = new BinaryTree(node3c);
 
-//	string str3 = "c e n m o s r z q y l j k a g u b d h i f t p v x w $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $";
-	string str3 = "c e m z u $ $ b $ $ q d $ $ h $ $ o y i $ $ f $ $ l t $ $ p $ $ n s j v $ $ x $ $ k w $ $ $ r a $ $ g $ $";
-
+	string str3 = "c e m z u $ $ b $ $ q d $ $ h $ $ o y i $ $ f $ $ l t $ $ p $ $ n s j v $ $ x $ $ k w $ $ $ r a $ $ g $ $ ";
 	BinaryTree * bTree3copy = new BinaryTree();
 	bTree3copy -> deserialize(str3);
-	cout << "Print binary tree 3     :" << bTree3->serialize() << endl;
-	cout << "Print binary tree 3 copy:" << bTree3copy->serialize() << endl;
-	cout << "The result of depth search in tree 3: " << bTree3->dfSearch(input) << endl;
+
+	string str3queue = "c e n m o s r z q y l j k a g u b d h i f t p v x w $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ $ ";
+	BinaryTree * bTree3queuecopy = new BinaryTree();
+	bTree3queuecopy -> deserializeByQueue(str3queue);
+
+	cout << "Print binary tree 3           :   " << bTree3->serialize() << endl;
+	cout << "Print binary tree 3 copy      :   " << bTree3copy->serialize() << endl;
+	cout << "Print binary tree 3 queue     :   " << bTree3->serializeByQueue() << endl;
+	cout << "Print binary tree 3 queue copy:   " << bTree3queuecopy->serializeByQueue() << endl << endl;
+	cout << "The result of depth search in tree 3:   " << bTree3->dfSearch(input) << endl << endl;
 
 	// delete the trees
 	delete bTree1;
 	delete bTree1copy;
+	delete bTree1queuecopy;
 	delete bTree2;
 	delete bTree3;
 	delete bTree3copy;
+	delete bTree3queuecopy;
 	
 	// The fix
 	cout << "Enter a char to end the program: " << endl;
